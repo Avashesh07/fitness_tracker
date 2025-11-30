@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService, Stats, WeightEntry, CalorieEntry, WorkoutEntry } from '../../services/api.service';
+import { XPService, XPBreakdown, ArenaInfo } from '../../services/xp.service';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -20,6 +21,79 @@ Chart.register(...registerables);
         <div class="mission-status">
           <span class="status-text">PROTOCOL STATUS:</span>
           <span class="status-value status-active">OPERATIONAL</span>
+        </div>
+      </div>
+
+      <!-- Level & Arena Progression -->
+      <div class="progression-section animate-fade-in" style="animation-delay: 0.05s">
+        <!-- Level Display -->
+        <div class="level-card">
+          <div class="level-badge-large" [style.background]="'linear-gradient(135deg, ' + (xpData?.level.color || '#808080') + ', ' + (xpData?.level.color || '#808080') + 'dd)'">
+            <div class="level-number">{{ xpData?.level.level || 1 }}</div>
+            <div class="level-title">{{ xpData?.level.title || 'ROOKIE' }}</div>
+          </div>
+          <div class="level-info">
+            <div class="level-description">{{ xpData?.level.description || 'Just starting out' }}</div>
+            <div class="xp-bar-container">
+              <div class="xp-bar-fill" [style.width.%]="xpData?.xpProgress.progress || 0"></div>
+              <div class="xp-bar-text">
+                <span class="xp-current mono">{{ xpData?.xpProgress.current || 0 }}</span>
+                <span class="xp-separator">/</span>
+                <span class="xp-next mono">{{ xpData?.xpProgress.next || 0 }}</span>
+              </div>
+            </div>
+            <div class="xp-total">
+              <span class="xp-label">TOTAL XP:</span>
+              <span class="xp-value mono">{{ xpData?.totalXP || 0 | number }}</span>
+            </div>
+            @if (xpData && xpData.xpProgress.xpNeeded > 0) {
+              <div class="xp-needed">
+                <span class="needed-label">XP TO NEXT LEVEL:</span>
+                <span class="needed-value mono">{{ xpData.xpProgress.xpNeeded }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Arena Display -->
+        <div class="arena-card">
+          <div class="arena-badge-large" [style.border-color]="arenaData?.current.color || '#808080'">
+            <div class="arena-icon">{{ arenaData?.current.icon || '🏋️' }}</div>
+            <div class="arena-name">{{ arenaData?.current.name || 'TRAINING GROUNDS' }}</div>
+          </div>
+          <div class="arena-info">
+            <div class="arena-description">{{ arenaData?.current.description || 'Beginner arena' }}</div>
+            <div class="arena-stats">
+              <div class="arena-stat">
+                <span class="stat-label">DEFICIT STREAK</span>
+                <span class="stat-value mono highlight">{{ arenaData?.deficitStreak || 0 }}</span>
+                <span class="stat-unit">DAYS</span>
+              </div>
+              @if (arenaData?.next) {
+                <div class="arena-stat">
+                  <span class="stat-label">NEXT ARENA</span>
+                  <span class="stat-value">{{ arenaData.next.name }}</span>
+                  <span class="stat-unit">{{ arenaData.daysUntilNext }} DAYS</span>
+                </div>
+              } @else {
+                <div class="arena-stat">
+                  <span class="stat-label">STATUS</span>
+                  <span class="stat-value highlight">MAX ARENA</span>
+                  <span class="stat-unit">ACHIEVED</span>
+                </div>
+              }
+            </div>
+            @if (arenaData?.next) {
+              <div class="arena-progress">
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="getArenaProgress()"></div>
+                </div>
+                <div class="progress-text">
+                  {{ arenaData.daysUntilNext }} more day{{ arenaData.daysUntilNext !== 1 ? 's' : '' }} until {{ arenaData.next.name }}
+                </div>
+              </div>
+            }
+          </div>
         </div>
       </div>
 
@@ -135,25 +209,50 @@ Chart.register(...registerables);
         </div>
       </div>
 
-      <!-- Achievements Section -->
-      <div class="achievements-section animate-fade-in" style="animation-delay: 0.15s">
+      <!-- Estimated Weight Loss Section -->
+      <div class="weight-loss-section animate-fade-in" style="animation-delay: 0.18s">
         <div class="section-header">
           <span class="section-icon">◈</span>
-          <span class="section-title">ACHIEVEMENTS UNLOCKED</span>
+          <span class="section-title">ESTIMATED WEIGHT LOSS FROM DEFICIT</span>
           <span class="section-line"></span>
         </div>
-        <div class="achievements-grid">
-          @for (achievement of achievements; track achievement.id) {
-            <div class="achievement-card" [class.unlocked]="achievement.unlocked">
-              <div class="achievement-icon">{{ achievement.icon }}</div>
-              <div class="achievement-info">
-                <span class="achievement-name">{{ achievement.name }}</span>
-                <span class="achievement-desc">{{ achievement.description }}</span>
-              </div>
-              <div class="achievement-xp" *ngIf="achievement.unlocked">+{{ achievement.xp }} XP</div>
-              <div class="achievement-lock" *ngIf="!achievement.unlocked">🔒</div>
-            </div>
-          }
+        
+        <div class="weight-loss-stats">
+          <div class="wl-stat">
+            <span class="wl-label">TOTAL DEFICIT</span>
+            <span class="wl-value mono" [class.positive]="totalDeficit < 0" [class.negative]="totalDeficit > 0">
+              {{ totalDeficit > 0 ? '+' : '' }}{{ totalDeficit | number:'1.0-0' }} KCAL
+            </span>
+          </div>
+          <div class="wl-stat highlight">
+            <span class="wl-label">ESTIMATED CHANGE</span>
+            <span class="wl-value mono" [class.positive]="estimatedWeightChange < 0" [class.negative]="estimatedWeightChange > 0">
+              {{ estimatedWeightChange > 0 ? '+' : '' }}{{ formatNumber(estimatedWeightChange) }} KG
+            </span>
+          </div>
+          <div class="wl-stat">
+            <span class="wl-label">AVG DAILY DEFICIT</span>
+            <span class="wl-value mono" [class.positive]="avgDailyDeficit < 0" [class.negative]="avgDailyDeficit > 0">
+              {{ avgDailyDeficit > 0 ? '+' : '' }}{{ avgDailyDeficit | number:'1.0-0' }} KCAL
+            </span>
+          </div>
+          <div class="wl-stat">
+            <span class="wl-label">PROJECTED/WEEK</span>
+            <span class="wl-value mono" [class.positive]="projectedWeeklyChange < 0" [class.negative]="projectedWeeklyChange > 0">
+              {{ projectedWeeklyChange > 0 ? '+' : '' }}{{ formatNumber(projectedWeeklyChange) }} KG
+            </span>
+          </div>
+        </div>
+
+        <div class="chart-panel full-width">
+          <div class="panel-header">
+            <span class="panel-icon">◆</span>
+            <span class="panel-title">CUMULATIVE WEIGHT CHANGE</span>
+            <span class="panel-badge">FROM CALORIE DATA</span>
+          </div>
+          <div class="chart-container-large">
+            <canvas #estimatedLossChart></canvas>
+          </div>
         </div>
       </div>
 
@@ -272,6 +371,286 @@ Chart.register(...registerables);
       border: 1px solid var(--accent-primary);
       color: var(--accent-primary);
       letter-spacing: 0.15em;
+    }
+
+    /* Progression Section - Level & Arena */
+    .progression-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .level-card,
+    .arena-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      padding: 24px;
+      display: flex;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .level-card::before,
+    .arena-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+    }
+
+    .level-badge-large {
+      width: 120px;
+      height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(255, 106, 0, 0.3);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .level-badge-large::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 12px;
+      padding: 2px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
+    .level-number {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 48px;
+      font-weight: 900;
+      color: var(--bg-void);
+      line-height: 1;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .level-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--bg-void);
+      letter-spacing: 0.15em;
+      margin-top: 4px;
+    }
+
+    .level-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .level-description {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .xp-bar-container {
+      position: relative;
+      height: 24px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    .xp-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6a00, #ffaa00, #ff6a00);
+      background-size: 200% 100%;
+      animation: xpShimmer 2s linear infinite;
+      box-shadow: 0 0 15px rgba(255, 106, 0, 0.5);
+      transition: width 0.5s ease;
+    }
+
+    @keyframes xpShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .xp-bar-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--bg-void);
+      font-weight: 700;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .xp-separator {
+      opacity: 0.7;
+    }
+
+    .xp-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border-left: 2px solid var(--accent-primary);
+    }
+
+    .xp-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    .xp-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+
+    .xp-needed {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .needed-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+    }
+
+    .needed-value {
+      font-size: 13px;
+      color: var(--accent-primary);
+    }
+
+    /* Arena Card */
+    .arena-badge-large {
+      width: 120px;
+      height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid;
+      border-radius: 12px;
+      background: var(--bg-secondary);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .arena-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    .arena-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .arena-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .arena-description {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .arena-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .arena-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    .stat-value.highlight {
+      color: var(--accent-primary);
+      text-shadow: 0 0 10px var(--accent-primary-glow);
+    }
+
+    .stat-unit {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .arena-progress {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-primary), var(--accent-blue));
+      box-shadow: 0 0 10px var(--accent-primary-glow);
+      transition: width 0.5s ease;
+    }
+
+    .progress-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
     }
 
     /* Section Headers */
@@ -533,61 +912,79 @@ Chart.register(...registerables);
       letter-spacing: 0.1em;
     }
 
-    /* Achievements */
-    .achievements-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+    /* Weight Loss Section */
+    .weight-loss-section {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      padding: 24px;
+      position: relative;
     }
 
-    .achievement-card {
+    .weight-loss-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-green), var(--accent-primary), var(--accent-green));
+    }
+
+    .weight-loss-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .wl-stat {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 12px;
       padding: 16px;
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
-      transition: all var(--transition-normal);
-      opacity: 0.4;
     }
 
-    .achievement-card.unlocked {
-      opacity: 1;
-      border-color: var(--accent-primary);
+    .wl-stat.highlight {
       background: var(--accent-primary-faint);
+      border-color: var(--accent-primary);
     }
 
-    .achievement-icon {
-      font-size: 24px;
+    .wl-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
     }
 
-    .achievement-info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .achievement-name {
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
+    .wl-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
       color: var(--text-primary);
     }
 
-    .achievement-desc {
-      font-size: 10px;
-      color: var(--text-muted);
+    .wl-value.positive {
+      color: var(--accent-green);
+      text-shadow: 0 0 10px rgba(0, 255, 106, 0.5);
     }
 
-    .achievement-xp {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 12px;
-      color: var(--level-gold);
+    .wl-value.negative {
+      color: var(--accent-red);
+      text-shadow: 0 0 10px rgba(255, 45, 45, 0.5);
     }
 
-    .achievement-lock {
-      font-size: 16px;
-      opacity: 0.5;
+    .chart-panel.full-width {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+    }
+
+    .chart-container-large {
+      height: 300px;
+      position: relative;
     }
 
     /* Charts */
@@ -725,8 +1122,19 @@ Chart.register(...registerables);
         grid-template-columns: repeat(2, 1fr);
       }
 
-      .achievements-grid {
+      .weight-loss-stats {
         grid-template-columns: repeat(2, 1fr);
+      }
+
+      .progression-section {
+        grid-template-columns: 1fr;
+      }
+
+      .level-card,
+      .arena-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
       }
     }
 
@@ -735,11 +1143,33 @@ Chart.register(...registerables);
         grid-template-columns: 1fr;
       }
 
-      .achievements-grid {
+      .charts-section {
         grid-template-columns: 1fr;
       }
 
-      .charts-section {
+      .weight-loss-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .progression-section {
+        grid-template-columns: 1fr;
+      }
+
+      .level-badge-large,
+      .arena-badge-large {
+        width: 100px;
+        height: 100px;
+      }
+
+      .level-number {
+        font-size: 36px;
+      }
+
+      .arena-icon {
+        font-size: 36px;
+      }
+
+      .arena-stats {
         grid-template-columns: 1fr;
       }
 
@@ -748,29 +1178,46 @@ Chart.register(...registerables);
         align-items: flex-start;
         gap: 12px;
       }
+
+      .chart-container-large {
+        height: 250px;
+      }
     }
   `]
 })
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('weightChart') weightChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('calorieChart') calorieChartRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('estimatedLossChart') estimatedLossChartRef!: ElementRef<HTMLCanvasElement>;
 
   stats: Stats | null = null;
   weights: WeightEntry[] = [];
   calories: CalorieEntry[] = [];
   workouts: WorkoutEntry[] = [];
   recentActivities: any[] = [];
-  achievements: any[] = [];
 
   weightChart: Chart | null = null;
   calorieChart: Chart | null = null;
+  estimatedLossChart: Chart | null = null;
+
+  // Estimated weight loss calculations
+  totalDeficit = 0;
+  estimatedWeightChange = 0;
+  avgDailyDeficit = 0;
+  projectedWeeklyChange = 0;
+
+  // XP & Arena data
+  xpData: XPBreakdown | null = null;
+  arenaData: ArenaInfo | null = null;
 
   Math = Math;
 
-  constructor(private apiService: ApiService) {}
+  constructor(
+    private apiService: ApiService,
+    private xpService: XPService
+  ) {}
 
   ngOnInit() {
-    this.initAchievements();
     this.loadData();
   }
 
@@ -779,21 +1226,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     this.weightChart?.destroy();
     this.calorieChart?.destroy();
-  }
-
-  initAchievements() {
-    this.achievements = [
-      { id: 1, icon: '🎯', name: 'FIRST BLOOD', description: 'Log your first weight', xp: 100, unlocked: false },
-      { id: 2, icon: '⚡', name: 'ENERGIZED', description: 'Track 7 days of calories', xp: 200, unlocked: false },
-      { id: 3, icon: '💪', name: 'WARRIOR', description: 'Complete 10 workouts', xp: 300, unlocked: false },
-      { id: 4, icon: '🔥', name: 'ON FIRE', description: '5 day streak', xp: 250, unlocked: false },
-    ];
+    this.estimatedLossChart?.destroy();
   }
 
   loadData() {
     this.apiService.getStats().subscribe(stats => {
       this.stats = stats;
-      this.updateAchievements();
     });
 
     this.apiService.getWeights().subscribe(weights => {
@@ -804,8 +1242,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.apiService.getCalories().subscribe(calories => {
       this.calories = calories;
+      this.calculateEstimatedWeightLoss();
       this.initCalorieChart();
+      this.initEstimatedLossChart();
       this.updateRecentActivities();
+      this.loadXPData();
+      this.loadArenaData();
     });
 
     this.apiService.getWorkouts().subscribe(workouts => {
@@ -814,20 +1256,28 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  updateAchievements() {
-    if (!this.stats) return;
-    
-    // First Blood - first weight entry
-    this.achievements[0].unlocked = this.stats.totalEntries > 0;
-    
-    // Energized - 7 days of calories
-    this.achievements[1].unlocked = this.stats.avgCaloriesEaten > 0;
-    
-    // Warrior - 10 workouts
-    this.achievements[2].unlocked = this.stats.totalWorkouts >= 10;
-    
-    // On Fire - streak (simplified check)
-    this.achievements[3].unlocked = this.stats.totalWorkouts >= 5;
+  async loadXPData() {
+    try {
+      this.xpData = await this.xpService.calculateTotalXP();
+    } catch (error) {
+      console.error('Error loading XP data:', error);
+    }
+  }
+
+  async loadArenaData() {
+    try {
+      this.arenaData = await this.xpService.calculateArenaInfo();
+    } catch (error) {
+      console.error('Error loading arena data:', error);
+    }
+  }
+
+  getArenaProgress(): number {
+    if (!this.arenaData?.next) return 100;
+    const current = this.arenaData.current.requiredDays;
+    const next = this.arenaData.next.requiredDays;
+    const progress = this.arenaData.deficitStreak;
+    return ((progress - current) / (next - current)) * 100;
   }
 
   formatNumber(num: number): string {
@@ -880,6 +1330,194 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.recentActivities = activities
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 8);
+  }
+
+  calculateEstimatedWeightLoss() {
+    if (this.calories.length === 0) {
+      this.totalDeficit = 0;
+      this.estimatedWeightChange = 0;
+      this.avgDailyDeficit = 0;
+      this.projectedWeeklyChange = 0;
+      return;
+    }
+
+    // Calculate total net calories (eaten - burnt) for all days
+    // Negative = deficit (weight loss), Positive = surplus (weight gain)
+    this.totalDeficit = this.calories.reduce((sum, c) => {
+      const eaten = Number(c.caloriesEaten) || 0;
+      const burnt = Number(c.caloriesBurnt) || 0;
+      return sum + (eaten - burnt);
+    }, 0);
+
+    // 7700 kcal ≈ 1kg of fat (using 7000 for simplicity)
+    this.estimatedWeightChange = this.totalDeficit / 7000;
+
+    // Average daily deficit
+    this.avgDailyDeficit = this.totalDeficit / this.calories.length;
+
+    // Projected weekly change based on average
+    this.projectedWeeklyChange = (this.avgDailyDeficit * 7) / 7000;
+  }
+
+  initEstimatedLossChart() {
+    if (!this.estimatedLossChartRef?.nativeElement || this.calories.length === 0) return;
+
+    this.estimatedLossChart?.destroy();
+
+    const ctx = this.estimatedLossChartRef.nativeElement.getContext('2d');
+    if (!ctx) return;
+
+    // Sort calories by date
+    const sortedCalories = [...this.calories].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const labels: string[] = [];
+    const dailyDeficit: number[] = [];
+    const cumulativeChange: number[] = [];
+    let cumulative = 0;
+
+    sortedCalories.forEach(c => {
+      const d = new Date(c.date);
+      labels.push(`${d.getDate()}.${d.getMonth() + 1}`);
+      
+      const eaten = Number(c.caloriesEaten) || 0;
+      const burnt = Number(c.caloriesBurnt) || 0;
+      const netDeficit = eaten - burnt;
+      
+      dailyDeficit.push(netDeficit);
+      cumulative += netDeficit / 7000; // Convert to kg
+      cumulativeChange.push(parseFloat(cumulative.toFixed(3)));
+    });
+
+    // Create gradient for cumulative line
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(0, 255, 106, 0.3)');
+    gradient.addColorStop(0.5, 'rgba(0, 255, 106, 0)');
+    gradient.addColorStop(0.5, 'rgba(255, 45, 45, 0)');
+    gradient.addColorStop(1, 'rgba(255, 45, 45, 0.3)');
+
+    this.estimatedLossChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Cumulative Weight Change (kg)',
+            data: cumulativeChange,
+            borderColor: cumulativeChange[cumulativeChange.length - 1] <= 0 ? '#00ff6a' : '#ff2d2d',
+            backgroundColor: gradient,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: (context) => {
+              const value = context.raw as number;
+              return value <= 0 ? '#00ff6a' : '#ff2d2d';
+            },
+            pointBorderColor: '#0a0c10',
+            pointBorderWidth: 2,
+            pointHoverRadius: 7,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Daily Net (kcal)',
+            data: dailyDeficit,
+            borderColor: 'rgba(255, 106, 0, 0.6)',
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            borderDash: [5, 5],
+            fill: false,
+            tension: 0.3,
+            pointRadius: 2,
+            pointBackgroundColor: '#ff6a00',
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            align: 'end',
+            labels: {
+              color: '#8090a0',
+              boxWidth: 12,
+              padding: 16,
+              font: { family: 'Rajdhani', size: 11 }
+            }
+          },
+          tooltip: {
+            backgroundColor: '#141820',
+            titleColor: '#ff6a00',
+            bodyColor: '#e8e8e8',
+            borderColor: 'rgba(255, 106, 0, 0.3)',
+            borderWidth: 1,
+            padding: 12,
+            cornerRadius: 0,
+            callbacks: {
+              label: function(context) {
+                if (context.datasetIndex === 0) {
+                  const val = context.raw as number;
+                  return `Est. Change: ${val > 0 ? '+' : ''}${val.toFixed(3)} kg`;
+                } else {
+                  const val = context.raw as number;
+                  return `Daily Net: ${val > 0 ? '+' : ''}${val.toFixed(0)} kcal`;
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 106, 0, 0.08)' },
+            ticks: { color: '#4a5568', font: { family: 'Share Tech Mono', size: 10 } }
+          },
+          y: {
+            type: 'linear',
+            position: 'left',
+            grid: { color: 'rgba(0, 255, 106, 0.1)' },
+            ticks: { 
+              color: '#00ff6a', 
+              font: { family: 'Share Tech Mono', size: 10 },
+              callback: function(value) {
+                return value + ' kg';
+              }
+            },
+            title: {
+              display: true,
+              text: 'CUMULATIVE KG',
+              color: '#4a5568',
+              font: { family: 'Share Tech Mono', size: 9 }
+            }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            grid: { display: false },
+            ticks: { 
+              color: '#ff6a00', 
+              font: { family: 'Share Tech Mono', size: 10 },
+              callback: function(value) {
+                return value + ' kcal';
+              }
+            },
+            title: {
+              display: true,
+              text: 'DAILY NET',
+              color: '#4a5568',
+              font: { family: 'Share Tech Mono', size: 9 }
+            }
+          }
+        }
+      }
+    });
   }
 
   initWeightChart() {

@@ -62,7 +62,7 @@ Chart.register(...registerables);
                   <span class="combat-desc">Endurance Training</span>
                 </div>
                 <div class="combat-check" *ngIf="newEntry.cardio">✓</div>
-                <div class="combat-xp">+75 XP</div>
+                <div class="combat-xp">+60 XP</div>
               </div>
 
               <div class="combat-card" [class.selected]="newEntry.strength" (click)="newEntry.strength = !newEntry.strength">
@@ -72,7 +72,7 @@ Chart.register(...registerables);
                   <span class="combat-desc">Power Training</span>
                 </div>
                 <div class="combat-check" *ngIf="newEntry.strength">✓</div>
-                <div class="combat-xp">+75 XP</div>
+                <div class="combat-xp">+60 XP</div>
               </div>
             </div>
 

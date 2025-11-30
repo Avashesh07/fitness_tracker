@@ -108,9 +108,9 @@ Chart.register(...registerables);
                     <span class="meter-value mono">{{ todayEntry.caloriesEaten }}</span>
                   </div>
                   <div class="meter-bar">
-                    <div class="meter-fill" [style.width.%]="getBarWidth(todayEntry.caloriesEaten, 2000)"></div>
+                    <div class="meter-fill" [style.width.%]="getBarWidth(todayEntry.caloriesEaten, 2400)"></div>
                   </div>
-                  <span class="meter-max">/ 2000 KCAL</span>
+                  <span class="meter-max">/ 2400 KCAL</span>
                 </div>
                 <div class="meter burn">
                   <div class="meter-header">
@@ -118,9 +118,9 @@ Chart.register(...registerables);
                     <span class="meter-value mono">{{ todayEntry.caloriesBurnt }}</span>
                   </div>
                   <div class="meter-bar">
-                    <div class="meter-fill" [style.width.%]="getBarWidth(todayEntry.caloriesBurnt, 1000)"></div>
+                    <div class="meter-fill" [style.width.%]="getBarWidth(todayEntry.caloriesBurnt, 3500)"></div>
                   </div>
-                  <span class="meter-max">/ 1000 KCAL</span>
+                  <span class="meter-max">/ 3500 KCAL</span>
                 </div>
               </div>
             </div>

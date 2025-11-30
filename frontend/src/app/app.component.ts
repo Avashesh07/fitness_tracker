@@ -5,6 +5,8 @@ import { WeightTrackerComponent } from './components/weight-tracker/weight-track
 import { CalorieTrackerComponent } from './components/calorie-tracker/calorie-tracker.component';
 import { WorkoutTrackerComponent } from './components/workout-tracker/workout-tracker.component';
 import { ApiService, Stats } from './services/api.service';
+import { XPService } from './services/xp.service';
+import { calculateLevel, getXPProgress } from './config/game-config';
 
 @Component({
   selector: 'app-root',
@@ -529,7 +531,10 @@ export class AppComponent implements OnInit {
   currentLevel = 1;
   xpProgress = 0;
 
-  constructor(private apiService: ApiService) {}
+  constructor(
+    private apiService: ApiService,
+    private xpService: XPService
+  ) {}
 
   ngOnInit() {
     this.updateTime();
@@ -547,16 +552,24 @@ export class AppComponent implements OnInit {
     });
   }
 
-  loadXPData() {
-    this.apiService.getStats().subscribe(stats => {
-      // Calculate XP: 100 per weight entry, 50 per calorie entry, 150 per workout
-      this.totalXP = (stats.totalEntries * 100) + 
-                     (stats.avgCaloriesEaten > 0 ? stats.totalEntries * 50 : 0) +
-                     (stats.totalWorkouts * 150);
-      
-      // Calculate level (1000 XP per level)
-      this.currentLevel = Math.floor(this.totalXP / 1000) + 1;
-      this.xpProgress = (this.totalXP % 1000) / 10;
-    });
+  async loadXPData() {
+    try {
+      const xpData = await this.xpService.calculateTotalXP();
+      this.totalXP = xpData.totalXP;
+      this.currentLevel = xpData.level.level;
+      this.xpProgress = xpData.xpProgress.progress;
+    } catch (error) {
+      console.error('Error loading XP:', error);
+      // Fallback to simple calculation
+      this.apiService.getStats().subscribe(stats => {
+        this.totalXP = (stats.totalEntries * 100) + 
+                       (stats.avgCaloriesEaten > 0 ? stats.totalEntries * 50 : 0) +
+                       (stats.totalWorkouts * 150);
+        const level = calculateLevel(this.totalXP);
+        this.currentLevel = level.level;
+        const progress = getXPProgress(this.totalXP, level);
+        this.xpProgress = progress.progress;
+      });
+    }
   }
 }
