@@ -28,18 +28,18 @@ Chart.register(...registerables);
       <div class="progression-section animate-fade-in" style="animation-delay: 0.05s">
         <!-- Level Display -->
         <div class="level-card">
-          <div class="level-badge-large" [style.background]="'linear-gradient(135deg, ' + (xpData?.level.color || '#808080') + ', ' + (xpData?.level.color || '#808080') + 'dd)'">
-            <div class="level-number">{{ xpData?.level.level || 1 }}</div>
-            <div class="level-title">{{ xpData?.level.title || 'ROOKIE' }}</div>
+          <div class="level-badge-large" [style.background]="'linear-gradient(135deg, ' + (xpData?.level?.color || '#808080') + ', ' + (xpData?.level?.color || '#808080') + 'dd)'">
+            <div class="level-number">{{ xpData?.level?.level || 1 }}</div>
+            <div class="level-title">{{ xpData?.level?.title || 'ROOKIE' }}</div>
           </div>
           <div class="level-info">
-            <div class="level-description">{{ xpData?.level.description || 'Just starting out' }}</div>
+            <div class="level-description">{{ xpData?.level?.description || 'Just starting out' }}</div>
             <div class="xp-bar-container">
-              <div class="xp-bar-fill" [style.width.%]="xpData?.xpProgress.progress || 0"></div>
+              <div class="xp-bar-fill" [style.width.%]="xpData?.xpProgress?.progress || 0"></div>
               <div class="xp-bar-text">
-                <span class="xp-current mono">{{ xpData?.xpProgress.current || 0 }}</span>
+                <span class="xp-current mono">{{ xpData?.xpProgress?.current || 0 }}</span>
                 <span class="xp-separator">/</span>
-                <span class="xp-next mono">{{ xpData?.xpProgress.next || 0 }}</span>
+                <span class="xp-next mono">{{ xpData?.xpProgress?.next || 0 }}</span>
               </div>
             </div>
             <div class="xp-total">
@@ -57,12 +57,12 @@ Chart.register(...registerables);
 
         <!-- Arena Display -->
         <div class="arena-card">
-          <div class="arena-badge-large" [style.border-color]="arenaData?.current.color || '#808080'">
-            <div class="arena-icon">{{ arenaData?.current.icon || '🏋️' }}</div>
-            <div class="arena-name">{{ arenaData?.current.name || 'TRAINING GROUNDS' }}</div>
+          <div class="arena-badge-large" [style.border-color]="arenaData?.current?.color || '#808080'">
+            <div class="arena-icon">{{ arenaData?.current?.icon || '🏋️' }}</div>
+            <div class="arena-name">{{ arenaData?.current?.name || 'TRAINING GROUNDS' }}</div>
           </div>
           <div class="arena-info">
-            <div class="arena-description">{{ arenaData?.current.description || 'Beginner arena' }}</div>
+            <div class="arena-description">{{ arenaData?.current?.description || 'Beginner arena' }}</div>
             <div class="arena-stats">
               <div class="arena-stat">
                 <span class="stat-label">DEFICIT STREAK</span>
@@ -72,8 +72,8 @@ Chart.register(...registerables);
               @if (arenaData?.next) {
                 <div class="arena-stat">
                   <span class="stat-label">NEXT ARENA</span>
-                  <span class="stat-value">{{ arenaData.next.name }}</span>
-                  <span class="stat-unit">{{ arenaData.daysUntilNext }} DAYS</span>
+                  <span class="stat-value">{{ arenaData?.next?.name }}</span>
+                  <span class="stat-unit">{{ arenaData?.daysUntilNext }} DAYS</span>
                 </div>
               } @else {
                 <div class="arena-stat">
@@ -89,7 +89,7 @@ Chart.register(...registerables);
                   <div class="progress-fill" [style.width.%]="getArenaProgress()"></div>
                 </div>
                 <div class="progress-text">
-                  {{ arenaData.daysUntilNext }} more day{{ arenaData.daysUntilNext !== 1 ? 's' : '' }} until {{ arenaData.next.name }}
+                  {{ arenaData?.daysUntilNext }} more day{{ arenaData?.daysUntilNext !== 1 ? 's' : '' }} until {{ arenaData?.next?.name }}
                 </div>
               </div>
             }
