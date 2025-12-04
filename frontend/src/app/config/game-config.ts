@@ -95,6 +95,12 @@ export const XP_REWARDS: XPReward[] = [
     description: 'Consecutive day bonus',
     baseXP: 25, // Per day in streak
     multiplier: 1.1 // Increases with streak length
+  },
+  {
+    action: 'rest_day_discipline',
+    description: 'Maintained deficit on rest day (no exercise)',
+    baseXP: 150, // High reward - harder to maintain deficit without exercise
+    multiplier: 1.25 // 25% bonus per consecutive qualifying rest day
   }
 ];
 
@@ -240,6 +246,23 @@ export const STREAK_CONFIG = {
   maxMultiplier: 2.0, // Cap at 2x
   milestoneDays: [3, 7, 14, 21, 30, 60, 90], // Streak milestones
   milestoneBonus: 100 // Bonus XP at milestones
+};
+
+/**
+ * REST DAY DISCIPLINE CONFIGURATION
+ * Rewards maintaining calorie deficit on rest days (no exercise)
+ * Rolling 7-day window: 1-2 rest days with deficit = bonus
+ */
+export const REST_DAY_DISCIPLINE_CONFIG = {
+  rollingWindowDays: 7, // Check last 7 days
+  minRestDays: 1, // Minimum rest days needed in window
+  maxRestDays: 2, // Maximum rest days allowed in window (no more than 2)
+  baseBonus: 150, // Base XP per qualifying rest day with deficit
+  multiplier: 1.25, // 25% bonus multiplier (harder to maintain diet without exercise)
+  perfectWeekBonus: 200, // Extra bonus if all rest days in week had deficit
+  restDayDeficitThreshold: 10, // Reduced deficit threshold for rest days (vs 500 on workout days)
+  // On rest days: any deficit >= 200 kcal counts for streaks (since no exercise to help burn)
+  description: 'Discipline on rest days - maintaining deficit without exercise'
 };
 
 /**

@@ -31,6 +31,7 @@ Edit the `XP_REWARDS` array to change how much XP each action gives:
 - `cardio_duration_goal` - Meeting cardio duration
 - `strength_duration_goal` - Meeting strength duration
 - `streak_bonus` - Consecutive day bonuses
+- `rest_day_discipline` - Maintaining deficit on rest days (no exercise)
 
 ### Add Multipliers
 
@@ -132,6 +133,44 @@ STREAK_CONFIG = {
   milestoneBonus: 100    // Bonus XP at milestones
 }
 ```
+
+## 🧘 Rest Day Discipline Bonus
+
+This feature rewards users who maintain their calorie deficit on rest days (days without exercise). It's harder to stay in deficit without burning calories through exercise, so this deserves extra recognition!
+
+Edit `REST_DAY_DISCIPLINE_CONFIG`:
+
+```typescript
+REST_DAY_DISCIPLINE_CONFIG = {
+  rollingWindowDays: 7,       // Check last 7 days
+  minRestDays: 1,             // Minimum rest days needed in window
+  maxRestDays: 2,             // Maximum rest days allowed (no more than 2)
+  baseBonus: 150,             // Base XP per qualifying rest day with deficit
+  multiplier: 1.25,           // 25% bonus multiplier
+  perfectWeekBonus: 200,      // Extra bonus if ALL rest days in week had deficit
+  restDayDeficitThreshold: 200, // ← REDUCED threshold for rest days!
+  description: 'Discipline on rest days - maintaining deficit without exercise'
+}
+```
+
+**How It Works:**
+1. Looks at rolling 7-day windows in your data
+2. Identifies "rest days" = days with NO cardio AND NO strength training (or explicitly logged as Rest Day)
+3. Checks if those rest days still maintained your calorie deficit goal
+4. Awards bonus XP if you have 1-2 qualifying rest days in a 7-day window
+5. Extra "Perfect Week" bonus if ALL your rest days in that week had a deficit
+
+**Reduced Threshold for Rest Days:**
+- Normal workout days require a **500 kcal deficit** to maintain streak
+- Rest days only require a **200 kcal deficit** to maintain streak
+- This prevents losing your streak when you can't burn as many calories without exercise
+- Recognizes that it's harder to create a large deficit without exercise helping burn calories
+
+**Why This Matters:**
+- It's psychologically harder to diet on rest days
+- Without exercise burning calories, you need more discipline with food
+- Rewards the mental strength needed to stay on track during recovery days
+- Doesn't punish you unfairly for smaller deficits when you're resting
 
 ## 💡 Quick Tips
 

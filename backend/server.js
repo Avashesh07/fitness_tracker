@@ -33,7 +33,7 @@ function initializeCsvFile(filePath, headers) {
 
 initializeCsvFile(WEIGHT_CSV, ['date', 'weight']);
 initializeCsvFile(CALORIES_CSV, ['date', 'caloriesEaten', 'caloriesBurnt']);
-initializeCsvFile(WORKOUTS_CSV, ['date', 'cardio', 'strength', 'cardioMinutes', 'strengthMinutes', 'notes']);
+initializeCsvFile(WORKOUTS_CSV, ['date', 'cardio', 'strength', 'restDay', 'cardioMinutes', 'strengthMinutes', 'notes']);
 
 // Helper function to read CSV
 function readCsv(filePath) {
@@ -185,7 +185,7 @@ app.get('/api/workouts', async (req, res) => {
 // Add/Update workout entry (supports partial updates)
 app.post('/api/workouts', async (req, res) => {
   try {
-    const { date, cardio, strength, cardioMinutes, strengthMinutes, notes } = req.body;
+    const { date, cardio, strength, restDay, cardioMinutes, strengthMinutes, notes } = req.body;
     const data = await readCsv(WORKOUTS_CSV);
     
     const existingIndex = data.findIndex(d => d.date === date);
@@ -197,6 +197,7 @@ app.post('/api/workouts', async (req, res) => {
         date, 
         cardio: cardio !== undefined ? (cardio ? 'true' : 'false') : existing.cardio,
         strength: strength !== undefined ? (strength ? 'true' : 'false') : existing.strength,
+        restDay: restDay !== undefined ? (restDay ? 'true' : 'false') : existing.restDay || 'false',
         cardioMinutes: cardioMinutes !== undefined && cardioMinutes !== null ? cardioMinutes : existing.cardioMinutes || 0,
         strengthMinutes: strengthMinutes !== undefined && strengthMinutes !== null ? strengthMinutes : existing.strengthMinutes || 0,
         notes: notes !== undefined ? notes : existing.notes || ''
@@ -206,6 +207,7 @@ app.post('/api/workouts', async (req, res) => {
         date, 
         cardio: cardio ? 'true' : 'false', 
         strength: strength ? 'true' : 'false',
+        restDay: restDay ? 'true' : 'false',
         cardioMinutes: cardioMinutes || 0,
         strengthMinutes: strengthMinutes || 0,
         notes: notes || ''
@@ -214,7 +216,7 @@ app.post('/api/workouts', async (req, res) => {
     
     data.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    await writeCsv(WORKOUTS_CSV, ['date', 'cardio', 'strength', 'cardioMinutes', 'strengthMinutes', 'notes'], data);
+    await writeCsv(WORKOUTS_CSV, ['date', 'cardio', 'strength', 'restDay', 'cardioMinutes', 'strengthMinutes', 'notes'], data);
     res.json({ success: true, data: data.find(d => d.date === date) });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -227,7 +229,7 @@ app.delete('/api/workouts/:date', async (req, res) => {
     const { date } = req.params;
     let data = await readCsv(WORKOUTS_CSV);
     data = data.filter(d => d.date !== date);
-    await writeCsv(WORKOUTS_CSV, ['date', 'cardio', 'strength', 'cardioMinutes', 'strengthMinutes', 'notes'], data);
+    await writeCsv(WORKOUTS_CSV, ['date', 'cardio', 'strength', 'restDay', 'cardioMinutes', 'strengthMinutes', 'notes'], data);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

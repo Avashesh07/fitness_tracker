@@ -17,6 +17,7 @@ export interface WorkoutEntry {
   date: string;
   cardio: boolean | string;
   strength: boolean | string;
+  restDay: boolean | string;
   cardioMinutes: number | string;
   strengthMinutes: number | string;
   notes: string;

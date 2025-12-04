@@ -55,7 +55,7 @@ Chart.register(...registerables);
 
             <!-- Combat Type Selection -->
             <div class="combat-types">
-              <div class="combat-card" [class.selected]="newEntry.cardio" (click)="newEntry.cardio = !newEntry.cardio">
+              <div class="combat-card" [class.selected]="newEntry.cardio" [class.disabled]="newEntry.restDay" (click)="toggleCardio()">
                 <div class="combat-icon">⚡</div>
                 <div class="combat-info">
                   <span class="combat-name">CARDIO</span>
@@ -65,7 +65,7 @@ Chart.register(...registerables);
                 <div class="combat-xp">+60 XP</div>
               </div>
 
-              <div class="combat-card" [class.selected]="newEntry.strength" (click)="newEntry.strength = !newEntry.strength">
+              <div class="combat-card" [class.selected]="newEntry.strength" [class.disabled]="newEntry.restDay" (click)="toggleStrength()">
                 <div class="combat-icon">💪</div>
                 <div class="combat-info">
                   <span class="combat-name">STRENGTH</span>
@@ -74,7 +74,24 @@ Chart.register(...registerables);
                 <div class="combat-check" *ngIf="newEntry.strength">✓</div>
                 <div class="combat-xp">+60 XP</div>
               </div>
+
+              <div class="combat-card rest-day" [class.selected]="newEntry.restDay" (click)="toggleRestDay()">
+                <div class="combat-icon">🧘</div>
+                <div class="combat-info">
+                  <span class="combat-name">REST DAY</span>
+                  <span class="combat-desc">Recovery & Discipline</span>
+                </div>
+                <div class="combat-check" *ngIf="newEntry.restDay">✓</div>
+                <div class="combat-xp bonus">+150 XP*</div>
+              </div>
             </div>
+
+            @if (newEntry.restDay) {
+              <div class="rest-day-hint animate-fade-in">
+                <span class="hint-icon">💡</span>
+                <span class="hint-text">*Rest Day Discipline Bonus: Maintain your calorie deficit on rest days to earn bonus XP!</span>
+              </div>
+            }
 
             @if (newEntry.cardio) {
               <div class="form-field duration animate-fade-in">
@@ -123,9 +140,9 @@ Chart.register(...registerables);
               <span class="hint-text">Entry exists for this date. Data will be merged/updated.</span>
             </div>
 
-            <button type="submit" class="btn btn-primary submit-btn" [disabled]="!newEntry.cardio && !newEntry.strength">
-              <span class="btn-icon">⚔</span>
-              {{ hasExistingWorkout() ? 'UPDATE COMBAT SESSION' : 'LOG COMBAT SESSION' }}
+            <button type="submit" class="btn btn-primary submit-btn" [disabled]="!newEntry.cardio && !newEntry.strength && !newEntry.restDay">
+              <span class="btn-icon">{{ newEntry.restDay ? '🧘' : '⚔' }}</span>
+              {{ hasExistingWorkout() ? 'UPDATE' : 'LOG' }} {{ newEntry.restDay ? 'REST DAY' : 'COMBAT SESSION' }}
             </button>
           </form>
         </div>
@@ -140,10 +157,12 @@ Chart.register(...registerables);
             </div>
             <div class="week-grid">
               @for (day of weekDays; track day.name) {
-                <div class="day-cell" [class.completed]="day.hasWorkout" [class.today]="day.isToday">
+                <div class="day-cell" [class.completed]="day.hasWorkout || day.restDay" [class.rest]="day.restDay" [class.today]="day.isToday">
                   <span class="day-name">{{ day.name }}</span>
                   <div class="day-icons">
-                    @if (day.hasWorkout) {
+                    @if (day.restDay) {
+                      <span class="day-badge rest">🧘</span>
+                    } @else if (day.hasWorkout) {
                       @if (day.cardio) {
                         <span class="day-badge cardio">⚡</span>
                       }
@@ -154,7 +173,7 @@ Chart.register(...registerables);
                       <span class="day-empty">—</span>
                     }
                   </div>
-                  <div class="day-indicator" [class.active]="day.hasWorkout"></div>
+                  <div class="day-indicator" [class.active]="day.hasWorkout" [class.rest]="day.restDay"></div>
                 </div>
               }
             </div>
@@ -209,6 +228,9 @@ Chart.register(...registerables);
                 </span>
                 <span class="col-type">
                   <div class="type-badges">
+                    @if (isTrue(entry.restDay)) {
+                      <span class="type-badge rest">🧘 REST DAY</span>
+                    }
                     @if (isTrue(entry.cardio)) {
                       <span class="type-badge cardio">⚡ CARDIO</span>
                     }
@@ -487,6 +509,57 @@ Chart.register(...registerables);
       color: var(--level-gold);
     }
 
+    .combat-xp.bonus {
+      color: var(--accent-green);
+    }
+
+    .combat-card.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .combat-card.rest-day {
+      border-color: var(--accent-green);
+      border-style: dashed;
+    }
+
+    .combat-card.rest-day:hover {
+      border-color: var(--accent-green);
+    }
+
+    .combat-card.rest-day.selected {
+      border-color: var(--accent-green);
+      border-style: solid;
+      background: rgba(0, 255, 106, 0.08);
+    }
+
+    .combat-card.rest-day .combat-check {
+      background: var(--accent-green);
+    }
+
+    .rest-day-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 16px;
+      background: rgba(0, 255, 106, 0.08);
+      border-left: 2px solid var(--accent-green);
+      font-size: 11px;
+      color: var(--accent-green);
+      line-height: 1.5;
+    }
+
+    .rest-day-hint .hint-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .rest-day-hint .hint-text {
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.02em;
+    }
+
     .submit-btn {
       margin-top: 12px;
       padding: 16px 24px;
@@ -562,6 +635,19 @@ Chart.register(...registerables);
     .day-indicator.active {
       background: var(--accent-primary);
       box-shadow: 0 0 10px var(--accent-primary-glow);
+    }
+
+    .day-indicator.rest {
+      background: var(--accent-green);
+      box-shadow: 0 0 10px rgba(0, 255, 106, 0.5);
+    }
+
+    .day-cell.rest {
+      background: rgba(0, 255, 106, 0.08);
+    }
+
+    .day-badge.rest {
+      color: var(--accent-green);
     }
 
     /* Chart Panels */
@@ -649,6 +735,12 @@ Chart.register(...registerables);
       background: rgba(157, 78, 221, 0.15);
       color: var(--accent-purple);
       border-left: 2px solid var(--accent-purple);
+    }
+
+    .type-badge.rest {
+      background: rgba(0, 255, 106, 0.15);
+      color: var(--accent-green);
+      border-left: 2px solid var(--accent-green);
     }
 
     .duration-display {
@@ -782,6 +874,7 @@ export class WorkoutTrackerComponent implements OnInit, AfterViewInit, OnDestroy
     date: new Date().toISOString().split('T')[0],
     cardio: false,
     strength: false,
+    restDay: false,
     cardioMinutes: null as number | null,
     strengthMinutes: null as number | null,
     notes: ''
@@ -834,7 +927,8 @@ export class WorkoutTrackerComponent implements OnInit, AfterViewInit, OnDestroy
         isToday: date.toDateString() === today.toDateString(),
         hasWorkout: false,
         cardio: false,
-        strength: false
+        strength: false,
+        restDay: false
       });
     }
   }
@@ -846,6 +940,7 @@ export class WorkoutTrackerComponent implements OnInit, AfterViewInit, OnDestroy
         day.hasWorkout = this.isTrue(workout.cardio) || this.isTrue(workout.strength);
         day.cardio = this.isTrue(workout.cardio);
         day.strength = this.isTrue(workout.strength);
+        day.restDay = this.isTrue(workout.restDay);
       }
     });
   }
@@ -884,13 +979,35 @@ export class WorkoutTrackerComponent implements OnInit, AfterViewInit, OnDestroy
     return this.workouts.some(w => w.date === this.newEntry.date);
   }
 
+  toggleCardio() {
+    if (this.newEntry.restDay) return; // Can't select cardio on rest day
+    this.newEntry.cardio = !this.newEntry.cardio;
+  }
+
+  toggleStrength() {
+    if (this.newEntry.restDay) return; // Can't select strength on rest day
+    this.newEntry.strength = !this.newEntry.strength;
+  }
+
+  toggleRestDay() {
+    this.newEntry.restDay = !this.newEntry.restDay;
+    if (this.newEntry.restDay) {
+      // Rest day means no exercise
+      this.newEntry.cardio = false;
+      this.newEntry.strength = false;
+      this.newEntry.cardioMinutes = null;
+      this.newEntry.strengthMinutes = null;
+    }
+  }
+
   addWorkout() {
-    if (!this.newEntry.cardio && !this.newEntry.strength) return;
+    if (!this.newEntry.cardio && !this.newEntry.strength && !this.newEntry.restDay) return;
 
     this.apiService.addWorkout({
       date: this.newEntry.date,
       cardio: this.newEntry.cardio,
       strength: this.newEntry.strength,
+      restDay: this.newEntry.restDay,
       cardioMinutes: this.newEntry.cardioMinutes || 0,
       strengthMinutes: this.newEntry.strengthMinutes || 0,
       notes: this.newEntry.notes
@@ -899,6 +1016,7 @@ export class WorkoutTrackerComponent implements OnInit, AfterViewInit, OnDestroy
         date: new Date().toISOString().split('T')[0],
         cardio: false,
         strength: false,
+        restDay: false,
         cardioMinutes: null,
         strengthMinutes: null,
         notes: ''
